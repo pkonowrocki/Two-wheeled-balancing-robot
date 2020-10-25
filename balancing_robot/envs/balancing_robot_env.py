@@ -1,6 +1,7 @@
 import math
 import os
-import uuid
+from collections import deque
+from typing import Callable, Sequence
 
 import gym
 import numpy as np
@@ -8,111 +9,222 @@ import pybullet as p
 import pybullet_data
 from gym import spaces
 from gym.utils import seeding
+from stable_baselines3.common import logger
 
 
 class BalancingRobotEnv(gym.Env):
-    metadata = {
-        'render.modes': ['human', 'rgb_array'],
-        'video.frames_per_second' : 50
+    robot_properties = {
+        'max_angular_velocity': 26.7,
+        'max_torque': 5,
+        'gravity': -9.87,
+        'model': "model.xml",
+        'plane_model': "plane.urdf",
+        'max_deg': 60
     }
 
-    def __init__(self, render=False):
-        self._observation = []
-        self.action_space = spaces.Box(low=np.array([-1, -1]),
-                                        high=np.array([1, 1]))
-        self.observation_space = spaces.Box(low=np.array([-math.inf, -math.inf, -math.inf, -math.inf, -math.inf, -math.inf, -math.pi, -math.pi, -math.pi, -math.inf, -math.inf, -math.inf, -1, -1]),
-                                            high=np.array([math.inf, math.inf, math.inf, math.inf, math.inf, math.inf, math.pi, math.pi, math.pi, math.inf, math.inf, math.inf, 1, 1])) # pitch, gyro, com.sp.
+    metadata = {
+        'render.modes': ['human', 'rgb_array'],
+        'video.frames_per_second': 50
+    }
 
-        if (render):
+    observation_space_names = {
+        'time': 0,
+        'x': 1,
+        'y': 2,
+        'z': 3,
+        'fi_x': 4,
+        'fi_y': 5,
+        'fi_z': 6,
+        'v_x': 7,
+        'v_y': 8,
+        'v_z': 9,
+        'w_x': 10,
+        'w_y': 11,
+        'w_z': 12,
+        'w_l': 13,
+        'w_r': 14,
+        'wd_l': 15,
+        'wd_r': 16
+    }
+
+    action_space_names = {
+        'left': 0,
+        'right': 1
+    }
+
+    joints_names = {
+        'left': 0,
+        'right': 1
+    }
+
+    def __init__(self,
+                 render: bool = False,
+                 seed: int = None,
+                 use_queues: bool = True,
+                 noise: bool = False,
+                 ramp_max_deg: int = 15,
+                 speed_profile_function: Callable[[float], Sequence[float]] = None,
+                 max_t: float = 500,
+                 dt: float = 0.1,
+                 noisy_dt: bool = False,
+                 std_dt: float = 0.01,
+                 speed_coef: float = 0.5,
+                 balance_coef: float = 1):
+        if use_queues:
+            self.time_queue: deque = deque([], 10)
+        else:
+            self.time_queue: deque = None
+        self.ramp_max_deg = ramp_max_deg
+        self.speed_coef = speed_coef
+        self.balance_coef = balance_coef
+        self.noise = noise
+        self.seed_init(seed)
+        self.action_space = spaces.Box(low=np.array([-1, -1]),
+                                       high=np.array([1, 1]))
+        self.observation_space = spaces.Box(low=np.array([0,
+                                                          -math.inf, -math.inf, -math.inf,
+                                                          -math.inf, -math.inf, -math.inf,
+                                                          -math.inf, -math.pi, -math.pi,
+                                                          -math.pi, -math.inf, -math.inf,
+                                                          -math.inf, -math.inf, -math.inf, -math.inf]),
+                                            high=np.array([math.inf,
+                                                           math.inf, math.inf, math.inf,
+                                                           math.inf, math.inf, math.inf,
+                                                           math.pi, math.pi, math.pi,
+                                                           math.inf, math.inf, math.inf,
+                                                           math.inf, math.inf, math.inf, math.inf]))
+
+        self.max_rad = np.abs(BalancingRobotEnv.robot_properties['max_deg'] * math.pi / 180)
+        self.t = 0
+        self.dt = dt
+        self.noisy_dt = noisy_dt
+        self.std_dt = std_dt
+        self.max_t = max_t
+        self.step_counter = 0
+        self.path = os.path.abspath(os.path.dirname(__file__))
+        self.botId = None
+        self.planeId = None
+        self.rampId = None
+        self.observation = None
+        self.vd = None
+        if speed_profile_function is None:
+            self.speed_profile_function: Callable[[float], Sequence[float]] = lambda t: [0, 0]
+        else:
+            self.speed_profile_function = speed_profile_function
+
+        if render:
             self.physicsClient = p.connect(p.GUI)
         else:
-            self.physicsClient = p.connect(p.DIRECT)  # non-graphical version
+            self.physicsClient = p.connect(p.DIRECT)
 
-        p.setAdditionalSearchPath(pybullet_data.getDataPath())  # used by loadURDF
+        p.setAdditionalSearchPath(pybullet_data.getDataPath())
 
-        self._seed()
-        
-        # paramId = p.addUserDebugParameter("My Param", 0, 100, 50)
-
-    def _seed(self, seed=None):
-        self.np_random, seed = seeding.np_random(seed)
-        return [seed]
-
-    def step(self, action):
-        self._assign_throttle(action)
-        p.stepSimulation()
-        self._observation = self._compute_observation()
-        reward = self._compute_reward()
-        done = self._compute_done()
-
-        self._envStepCounter += 1
-
-        return np.array(self._observation), reward, done, {}
-    
-    def _assign_throttle(self, action):
-        self.vt = action
-        action = action*self.maxV
-        p.setJointMotorControl2(bodyUniqueId=self.botId, 
-                                jointIndex=0, 
-                                controlMode=p.VELOCITY_CONTROL, 
-                                targetVelocity=action[0])
-        p.setJointMotorControl2(bodyUniqueId=self.botId, 
-                                jointIndex=1, 
-                                controlMode=p.VELOCITY_CONTROL, 
-                                targetVelocity=-action[1])
-
-    def _seed(self, seed=None):
+    def seed_init(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
         return [seed]
 
     def reset(self):
-        self.file = open(f'data4/{uuid.uuid4()}.csv', 'a+')
-        self.vt = np.array([0, 0])
-        self.vd = np.array([0.1, 0.7])
-        # self.maxV = 24.6 # 235RPM = 24,609142453 rad/sec
-        self.maxV = 30 # 235RPM = 24,609142453 rad/sec
-        self._envStepCounter = 0
-
+        self.step_counter = 0
+        self.t = 0
+        self.vd = self.speed_profile_function(self.t)
         p.resetSimulation()
-        p.setGravity(0, 0, -9.87) # m/s^2
-        self.dt = 0.01
-        p.setTimeStep(self.dt)
+        p.setGravity(0, 0, BalancingRobotEnv.robot_properties['gravity'])
 
-        planeId = p.loadURDF("plane.urdf")
-        cubeStartPos = [0, 0, 0.001]
-        cubeStartOrientation = p.getQuaternionFromEuler([0, 0, 0])
+        p.setTimeStep(self.dt + (np.random.normal(scale=self.std_dt) if self.noisy_dt else 0))
 
-        path = os.path.abspath(os.path.dirname(__file__))
-        self.botId = p.loadURDF(os.path.join(path, "model.xml"),
-                           cubeStartPos,
-                           cubeStartOrientation)
-        obs, reward, done, info = self.step(self.vt)
-        return obs
- 
-    def _compute_observation(self):
-        cubePos, cubeOrn = p.getBasePositionAndOrientation(self.botId)
-        cubeEuler = p.getEulerFromQuaternion(cubeOrn)
+        deg = np.random.normal(loc=0.0,
+                               scale=np.abs(self.ramp_max_deg / 3))
+        # deg = 0
+        rampOrientation = p.getQuaternionFromEuler([deg * math.pi / 180, 0, 0])
+        self.rampId = p.loadURDF(fileName=BalancingRobotEnv.robot_properties['plane_model'],
+                                 baseOrientation=rampOrientation)
+
+        planePosition = [0, 0, -0.1]
+        self.planeId = p.loadURDF(fileName=BalancingRobotEnv.robot_properties['plane_model'],
+                                  basePosition=planePosition)
+
+        cubeStartPos = [0, 0, 0]
+        cubeStartOrientation = p.getQuaternionFromEuler([np.random.normal() * 1e-3, 0, np.random.normal() * 1e-3])
+
+        self.botId = p.loadURDF(fileName=os.path.join(self.path, BalancingRobotEnv.robot_properties['model']),
+                                basePosition=cubeStartPos,
+                                baseOrientation=cubeStartOrientation)
+        self.observation = self.get_state()
+
+        return self.observation
+
+    def step(self, action):
+        self.assign_action(action)
+        reward = self.get_reward(self.observation)
+        done = self.check_done(self.observation)
+        time_step = self.dt
+        if self.noisy_dt:
+            time_step = self.dt + np.random.normal(scale=self.std_dt)
+            p.setTimeStep(time_step)
+        p.stepSimulation()
+        self.t += time_step
+        self.step_counter += 1
+        self.vd = self.speed_profile_function(self.t)
+
+        self.observation = self.get_state()
+
+        return self.observation, reward, done, {}
+
+    def get_state(self) -> np.ndarray:
+        position, orientation = p.getBasePositionAndOrientation(self.botId)
+        orientation_euler = p.getEulerFromQuaternion(orientation)
         linear, angular = p.getBaseVelocity(self.botId)
-        angular = np.divide(angular, self.maxV)
-        # print(f'cubeEuler: {cubeEuler}\tangular: {angular}\tvt: {self.vt}')
-        result = np.concatenate((cubePos, linear, cubeEuler, angular, self.vt))
-        self.file.writelines(f'{self.dt*self._envStepCounter},'  + f'{",".join([str(x) for x in result])}' + "\n")
+        result = np.concatenate((position, orientation_euler, linear, angular))
+        if self.noise:
+            noise = np.random.normal(0, 1.e-4, result.size)
+            result = noise + result
+
+        r_wheel = p.getJointState(self.botId, BalancingRobotEnv.joints_names['right'])
+        l_wheel = p.getJointState(self.botId, BalancingRobotEnv.joints_names['left'])
+        result = np.concatenate((result, [l_wheel[1], -r_wheel[1]], self.vd))
+        result = np.concatenate(([self.t], result))
+
         return result
 
-    def _compute_reward(self):
-        cubePos, cubeOrn = p.getBasePositionAndOrientation(self.botId)
-        cubeEuler = p.getEulerFromQuaternion(cubeOrn)
-        # reward = (1 - abs(cubeEuler[0])) * 0.15 - np.linalg.norm(self.vt - self.vd) * 0.01 - np.linalg.norm(cubePos[:-1])*0.015 - np.linalg.norm(cubeEuler[1:])*0.005
-        reward = (1 - abs(cubeEuler[0])) * 0.15 - np.linalg.norm(cubePos[:-1])*0.015 - np.linalg.norm(cubeEuler[1:])*0.004
-        # print(reward)
+    def assign_action(self, action):
+        action = self.clamp_torque(action*BalancingRobotEnv.robot_properties['max_torque'])
+        p.setJointMotorControl2(bodyIndex=self.botId,
+                                jointIndex=BalancingRobotEnv.action_space_names['left'],
+                                controlMode=p.TORQUE_CONTROL,
+                                force=action[BalancingRobotEnv.action_space_names['left']])
+        p.setJointMotorControl2(bodyIndex=self.botId,
+                                jointIndex=BalancingRobotEnv.action_space_names['right'],
+                                controlMode=p.TORQUE_CONTROL,
+                                force=-action[BalancingRobotEnv.action_space_names['right']])
+
+    def clamp_torque(self, action):
+        max_torque = BalancingRobotEnv.robot_properties['max_torque']
+        return [self.clamp(action[0], max_torque, -max_torque),
+                self.clamp(action[1], max_torque, -max_torque)]
+
+    def clamp(self, value, max_value, min_value):
+        return max(min(max_value, value), min_value)
+
+    def get_reward(self, observation):
+        fi_x = observation[BalancingRobotEnv.observation_space_names['fi_x']]
+        wheels_speed = np.array([observation[BalancingRobotEnv.observation_space_names['w_l']],
+                                 observation[BalancingRobotEnv.observation_space_names['w_r']]])
+
+        balance = abs(fi_x) / self.max_rad
+        speed = np.linalg.norm(wheels_speed - self.vd)
+        reward = (1 - balance * self.balance_coef - speed * self.speed_coef) / (self.balance_coef + self.speed_coef)
+        logger.record_mean("env/reward_mean", reward)
         return reward
 
-    def _compute_done(self):
-        cubePos, _ = p.getBasePositionAndOrientation(self.botId)
-        return cubePos[2] < 0.15 or self._envStepCounter >= 100000
+    def check_done(self, observation):
+        is_done = self.t > self.max_t or \
+                  np.abs(observation[BalancingRobotEnv.observation_space_names['fi_x']]) > self.max_rad
+        if is_done:
+            logger.record_mean("env/end_at", self.t)
+            if self.time_queue is not None:
+                self.time_queue.append(self.t)
+                logger.record("env/queue_end_at", np.mean(self.time_queue))
+        return is_done
 
     def render(self, mode='human', close=False):
         pass
-
-def clamp(n, minn, maxn):
-    return max(min(maxn, n), minn)

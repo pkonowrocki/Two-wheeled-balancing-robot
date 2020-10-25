@@ -127,17 +127,3 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
-/.idea/.gitignore
-/.idea/Two-wheeled-balancing-robot.iml
-/.idea/inspectionProfiles/Project_Default.xml
-/.idea/inspectionProfiles/profiles_settings.xml
-/.idea/misc.xml
-/.idea/modules.xml
-/.idea/vcs.xml
-/.vscode/launch.json
-/shit/ode_test.py
-/shit/test_ode.py
-/shit/test_with_ode.py
-/shit/NodePolicy.py
-/shit
-/lightning_logs

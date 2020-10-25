@@ -1,1 +1,4 @@
 from balancing_robot.envs.balancing_robot_env import BalancingRobotEnv
+from balancing_robot.envs.less_features_balancing_robot_env import LessBalancingRobotEnv
+from balancing_robot.envs.errors_balancing_robot_env import ErrorsBalancingRobotEnv
+from balancing_robot.envs.pid_balancing_robot_env import PidBalancingRobotEnv

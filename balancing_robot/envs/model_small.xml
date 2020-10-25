@@ -1,0 +1,93 @@
+<?xml version="1.0"?>
+<robot name="balance">
+ 
+  <material name="white">
+    <color rgba="1 1 1 1"/>
+  </material>
+ 
+  <material name="black">
+    <color rgba="0.2 0.2 0.2 1"/>
+  </material>
+ 
+  <link name="torso">
+    <visual>
+      <geometry>
+        <box size="0.1 0.03 0.15"/>
+      </geometry>
+      <origin rpy="0 0 0" xyz="0 0.0 0.092"/>
+      <material name="white"/>
+    </visual>
+    <collision>
+      <geometry>
+        <box size="0.1 0.03 0.15"/>
+      </geometry>
+      <origin rpy="0 0 0" xyz="0 0.0 0.092"/>
+    </collision>
+    <inertial>
+      <mass value="0.66"/>
+      <inertia ixx="0.001287000" ixy="0.0" ixz="0.0" iyy="0.001787500" iyz="0.0" izz="0.000599500"/>
+<!--      <origin rpy="0 0 0" xyz="0 0.0 0.091"/>-->
+    </inertial>
+  </link>
+ 
+  <link name="l_wheel">
+    <visual>
+      <origin rpy="0 1.5707963 0" xyz="0.07 0 0.016"/>
+      <geometry>
+        <cylinder length="0.03" radius="0.032"/>
+      </geometry>
+      <material name="black"/>
+    </visual>
+    <collision>
+      <origin rpy="0 1.5707963 0" xyz="0.07 0 0.016"/>
+      <geometry>
+        <cylinder length="0.03" radius="0.032"/>
+      </geometry>
+      <contact_coefficients mu="0.8" />
+    </collision>
+    <inertial>
+      <origin rpy="0 1.5707963 0" xyz="0.07 0 0.016"/>
+      <mass value="0.036"/>
+      <inertia ixx="0.000136188" ixy="0.0" ixz="0.0" iyy="0.000136188" iyz="0.0" izz="0.000017298"/>
+    </inertial>
+  </link>
+
+  <link name="r_wheel">
+    <visual>
+      <origin rpy="0 1.5707963 0" xyz="-0.07 0 0.016"/>
+      <geometry>
+        <cylinder length="0.03" radius="0.032"/>
+      </geometry>
+      <material name="black"/>
+    </visual>
+    <collision>
+      <origin rpy="0 1.5707963 0" xyz="-0.07 0 0.016"/>
+      <geometry>
+        <cylinder length="0.03" radius="0.032"/>
+      </geometry>
+      <contact_coefficients mu="0.8" />
+    </collision>
+    <inertial>
+      <mass value="0.036"/>
+      <origin rpy="0 1.5707963 0" xyz="-0.07 0 0.016"/>
+      <inertia ixx="0.000136188" ixy="0.0" ixz="0.0" iyy="0.000136188" iyz="0.0" izz="0.000017298"/>
+    </inertial>
+  </link>
+
+  <joint name="torso_l_wheel" type="continuous">
+    <parent link="torso"/>
+    <child link="l_wheel"/>
+<!--    <origin rpy="0 1.5707963 0" xyz="-0.07 0 0.016"/>-->
+    <axis xyz="-1 0 0"/>
+    <limit effort="0.5" velocity="26.7"/>
+  </joint>
+
+  <joint name="torso_r_wheel" type="continuous">
+    <parent link="torso"/>
+    <child link="r_wheel"/>
+<!--    <origin rpy="0 1.5707963 0" xyz="0.07 0 0.016"/>-->
+    <axis xyz="1 0 0"/>
+    <limit effort="0.5" velocity="26.7"/>
+  </joint>
+ 
+</robot>
