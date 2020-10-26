@@ -40,9 +40,8 @@ default_kw = {
 }
 
 
-def run_simulation(kw: Dict[str, Optional[Any]] = default_kw):
+def run_simulation(env: gym.Env, kw: Dict[str, Optional[Any]] = default_kw):
     path = './logs'
-    env = gym.make(**kw['env_kw'])
 
     if 'no_time' in kw.keys() and kw['no_time']:
         env = NoTimeEnv(env)
