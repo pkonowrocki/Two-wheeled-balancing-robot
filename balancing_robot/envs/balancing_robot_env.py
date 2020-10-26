@@ -61,7 +61,7 @@ class BalancingRobotEnv(gym.Env):
                  render: bool = False,
                  seed: int = None,
                  use_queues: bool = True,
-                 noise: bool = False,
+                 noise: bool = True,
                  ramp_max_deg: int = 15,
                  speed_profile_function: Callable[[float], Sequence[float]] = None,
                  max_t: float = 500,
@@ -86,13 +86,13 @@ class BalancingRobotEnv(gym.Env):
                                                           -math.inf, -math.inf, -math.inf,
                                                           -math.inf, -math.pi, -math.pi,
                                                           -math.pi, -math.inf, -math.inf,
-                                                          -math.inf, -math.inf, -math.inf, -math.inf]),
+                                                          -1, -1, -1, -1]),
                                             high=np.array([math.inf,
                                                            math.inf, math.inf, math.inf,
                                                            math.inf, math.inf, math.inf,
                                                            math.pi, math.pi, math.pi,
                                                            math.inf, math.inf, math.inf,
-                                                           math.inf, math.inf, math.inf, math.inf]))
+                                                           1, 1, 1, 1]))
 
         self.max_rad = np.abs(BalancingRobotEnv.robot_properties['max_deg'] * math.pi / 180)
         self.t = 0
@@ -176,12 +176,14 @@ class BalancingRobotEnv(gym.Env):
         linear, angular = p.getBaseVelocity(self.botId)
         result = np.concatenate((position, orientation_euler, linear, angular))
         if self.noise:
-            noise = np.random.normal(0, 1.e-4, result.size)
+            noise = np.random.normal(0, 1.e-5, result.size)
             result = noise + result
 
         r_wheel = p.getJointState(self.botId, BalancingRobotEnv.joints_names['right'])
         l_wheel = p.getJointState(self.botId, BalancingRobotEnv.joints_names['left'])
-        result = np.concatenate((result, [l_wheel[1], -r_wheel[1]], self.vd))
+        result = np.concatenate((result,
+                                 np.array([l_wheel[1], -r_wheel[1]])/BalancingRobotEnv.robot_properties['max_angular_velocity'],
+                                 np.array(self.vd)/BalancingRobotEnv.robot_properties['max_angular_velocity']))
         result = np.concatenate(([self.t], result))
 
         return result
@@ -210,10 +212,12 @@ class BalancingRobotEnv(gym.Env):
         wheels_speed = np.array([observation[BalancingRobotEnv.observation_space_names['w_l']],
                                  observation[BalancingRobotEnv.observation_space_names['w_r']]])
 
-        balance = abs(fi_x) / self.max_rad
+        balance = abs(fi_x)
         speed = np.linalg.norm(wheels_speed - self.vd)
         reward = (1 - balance * self.balance_coef - speed * self.speed_coef) / (self.balance_coef + self.speed_coef)
         logger.record_mean("env/reward_mean", reward)
+        logger.record_mean("env/speed_mean", speed)
+        logger.record_mean("env/balance_mean", balance)
         return reward
 
     def check_done(self, observation):

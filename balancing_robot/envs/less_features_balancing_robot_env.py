@@ -78,9 +78,10 @@ class LessBalancingRobotEnv(BalancingRobotEnv):
         wheels_speed = np.array([observation[LessBalancingRobotEnv.observation_space_names['w_l']],
                                  observation[LessBalancingRobotEnv.observation_space_names['w_r']]])
 
-        balance = abs(fi_x) / self.max_rad
-        speed = np.linalg.norm(wheels_speed - self.vd) / np.linalg.norm(self.vd) \
-            if not np.linalg.norm(self.vd) == 0 else np.linalg.norm(wheels_speed - self.vd)
+        balance = abs(fi_x)
+        speed = np.linalg.norm(wheels_speed - self.vd)
         reward = (1 - balance * self.balance_coef - speed * self.speed_coef) / (self.balance_coef + self.speed_coef)
         logger.record_mean("env/reward_mean", reward)
+        logger.record_mean("env/speed_mean", speed)
+        logger.record_mean("env/balance_mean", balance)
         return reward

@@ -76,11 +76,13 @@ class ErrorsBalancingRobotEnv(LessBalancingRobotEnv):
     def get_reward(self, observation):
         fi_x_error = observation[ErrorsBalancingRobotEnv.observation_space_names['e_fi_x']]
         wheels_speed_error = np.array([observation[ErrorsBalancingRobotEnv.observation_space_names['e_w_l']],
-                                 observation[ErrorsBalancingRobotEnv.observation_space_names['e_w_r']]])
+                                       observation[ErrorsBalancingRobotEnv.observation_space_names['e_w_r']]])
 
-        balance = abs(fi_x_error) / self.max_rad
+        balance = abs(fi_x_error)
         speed = np.linalg.norm(wheels_speed_error)
         reward = (1 - balance * self.balance_coef - speed * self.speed_coef) / (self.balance_coef + self.speed_coef)
         logger.record_mean("env/reward_mean", reward)
+        logger.record_mean("env/speed_mean", speed)
+        logger.record_mean("env/balance_mean", balance)
         return reward
 
