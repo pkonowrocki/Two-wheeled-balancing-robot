@@ -47,7 +47,6 @@ def run_simulation(env: gym.Env, kw: Dict[str, Optional[Any]] = default_kw):
         env = NoTimeEnv(env)
 
     model = kw['model'](env=env,
-                        verbose=0,
                         tensorboard_log=path,
                         **kw['model_kw'])
 
