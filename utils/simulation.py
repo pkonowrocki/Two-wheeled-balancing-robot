@@ -1,6 +1,6 @@
 import os
 import string
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 import gym
 from stable_baselines3 import TD3, SAC
@@ -40,7 +40,7 @@ default_kw = {
 }
 
 
-def run_simulation(kw: Dict[string, Any] = default_kw):
+def run_simulation(kw: Dict[str, Optional[Any]] = default_kw):
     path = './logs'
     env = gym.make(**kw['env_kw'])
 
