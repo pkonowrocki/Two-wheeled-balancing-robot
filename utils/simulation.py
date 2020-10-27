@@ -38,10 +38,10 @@ default_kw = {
         'n_eval_episodes': 5,
     }
 }
+default_path = './logs'
 
+def run_simulation(env: gym.Env, path: str = default_path, kw: Dict[str, Optional[Any]] = default_kw):
 
-def run_simulation(env: gym.Env, kw: Dict[str, Optional[Any]] = default_kw):
-    path = './logs'
 
     if 'no_time' in kw.keys() and kw['no_time']:
         env = NoTimeEnv(env)
