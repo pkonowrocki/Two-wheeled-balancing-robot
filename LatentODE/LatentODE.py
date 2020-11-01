@@ -20,7 +20,7 @@ class LatentODE(nn.Module, ABC):
                  ode_fun: nn.Module = None,
                  rnn_cell: nn.Module = None,
                  decoder: nn.Module = None,
-                 match: bool = False):
+                 match: bool = True):
         super(LatentODE, self).__init__()
         self.hidden_size = hidden_size
         self.latent_size = latent_size

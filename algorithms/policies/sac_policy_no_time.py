@@ -9,10 +9,37 @@ from torch import nn as nn
 import numpy as np
 
 from stable_baselines3.common.distributions import SquashedDiagGaussianDistribution, StateDependentNoiseDistribution
-from stable_baselines3.common.policies import BasePolicy, ContinuousCritic, create_sde_features_extractor, register_policy
+from stable_baselines3.common.policies import BasePolicy, ContinuousCritic, create_sde_features_extractor, \
+    register_policy
 from stable_baselines3.common.preprocessing import get_action_dim, is_image_space
 from stable_baselines3.common.torch_layers import BaseFeaturesExtractor, FlattenExtractor, NatureCNN, create_mlp
-from stable_baselines3.sac.policies import SACPolicy
+from stable_baselines3.sac.policies import SACPolicy, Actor
+
+
+class ContinuousCriticNoTime(ContinuousCritic):
+    def _forward_unimplemented(self, *input: Any) -> None:
+        pass
+
+    def __init__(self, **kwargs):
+        super(ContinuousCriticNoTime, self).__init__(**kwargs)
+    
+    def forward(self, obs: th.Tensor, actions: th.Tensor) -> Tuple[th.Tensor, ...]:
+        obs = SACPolicyNoTime.cut_observation(obs)
+        return super(ContinuousCriticNoTime, self).forward(obs, actions)
+    
+
+class ActorNoTime(Actor):
+
+    def __init__(
+            self, **kwargs):
+        super(ActorNoTime, self).__init__(**kwargs)
+
+    def _forward_unimplemented(self, *input: Any) -> None:
+        pass
+
+    def action_log_prob(self, obs: th.Tensor) -> Tuple[th.Tensor, th.Tensor]:
+        obs = SACPolicyNoTime.cut_observation(obs)
+        return super(ActorNoTime, self).action_log_prob(obs)
 
 
 class SACPolicyNoTime(SACPolicy):
@@ -41,7 +68,7 @@ class SACPolicyNoTime(SACPolicy):
                                     high=observation_space.high[1:])
         else:
             raise NotImplemented()
-        
+
         super(SACPolicyNoTime, self).__init__(
             observation_space=observation_space,
             action_space=action_space,
@@ -69,25 +96,32 @@ class SACPolicyNoTime(SACPolicy):
     def cut_observation(observation: Any) -> Any:
         return observation[:, 1:]
 
+    def make_actor(self) -> Actor:
+        return ActorNoTime(**self.actor_kwargs).to(self.device)
+
+    def make_critic(self) -> ContinuousCritic:
+        return ContinuousCriticNoTime(**self.critic_kwargs).to(self.device)
+
     def predict(
-        self,
-        observation: np.ndarray,
-        state: Optional[np.ndarray] = None,
-        mask: Optional[np.ndarray] = None,
-        deterministic: bool = False,
+            self,
+            observation: np.ndarray,
+            state: Optional[np.ndarray] = None,
+            mask: Optional[np.ndarray] = None,
+            deterministic: bool = False,
     ) -> Tuple[np.ndarray, Optional[np.ndarray]]:
         observation = SACPolicyNoTime.cut_observation(observation)
         observation = np.array(observation)
 
         if is_image_space(self.observation_space):
             if not (
-                observation.shape == self.observation_space.shape or observation.shape[1:] == self.observation_space.shape
+                    observation.shape == self.observation_space.shape or observation.shape[
+                                                                         1:] == self.observation_space.shape
             ):
                 # Try to re-order the channels
                 transpose_obs = VecTransposeImage.transpose_image(observation)
                 if (
-                    transpose_obs.shape == self.observation_space.shape
-                    or transpose_obs.shape[1:] == self.observation_space.shape
+                        transpose_obs.shape == self.observation_space.shape
+                        or transpose_obs.shape[1:] == self.observation_space.shape
                 ):
                     observation = transpose_obs
 

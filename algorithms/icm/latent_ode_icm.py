@@ -1,15 +1,15 @@
 from typing import Tuple, Iterator, Union, Callable, Dict, Any, Type, Optional
-from stable_baselines3.common import logger
 import gym
 import torch as th
 import torch as tr
 from stable_baselines3.common.buffers import RolloutBuffer, ReplayBuffer
 from stable_baselines3.common.type_aliases import ReplayBufferSamples
-from torch import Tensor, cuda
+from torch import Tensor
 from torch.nn import functional as F, Parameter
-
+import time
+from stable_baselines3.common import logger
 from LatentODE.LatentODE import LatentODE
-from algorithms.icm import ICM
+from algorithms.icm.icm import ICM
 
 
 class LatentOdeIcm(ICM):
@@ -64,36 +64,49 @@ class LatentOdeIcm(ICM):
     def calc_RolloutBuffer(self, buffer: RolloutBuffer) -> ReplayBufferSamples:
         raise NotImplemented()
 
-    def calc_loss_ReplayBufferSamples(self, buffer: ReplayBufferSamples) -> Tuple[th.Tensor, ReplayBufferSamples]:
+    def group_ReplayBufferSamples(self, buffer: ReplayBufferSamples):
+        buffer = ReplayBufferSamples(
+                    observations=buffer.observations.detach().cpu(),
+                    next_observations=buffer.next_observations.detach().cpu(),
+                    actions=buffer.actions.detach().cpu(),
+                    dones=buffer.dones.detach().cpu(),
+                    rewards=buffer.rewards.detach().cpu()
+                )
+        indicies = th.argsort(buffer.observations[:, 0])
         time: th.Tensor = th.stack((buffer.observations[:, 0], buffer.next_observations[:, 0]), dim=1)
-        observations_groups = {}
-        next_observations_groups = {}
-        time_dict = {}
-        dones_groups = {}
-        rewards_groups = {}
-        action_groups = {}
-        # for each idx in batch
-        for idx in range(time.shape[0]):
-            key = str(time[idx, :])
-            if key in time_dict.keys():
-                observations_groups[key] = th.cat((observations_groups[key],
-                                                   th.unsqueeze(buffer.observations[idx, :], 0)), 0)
-                next_observations_groups[key] = th.cat((next_observations_groups[key],
-                                                        th.unsqueeze(buffer.next_observations[idx, :], 0)), 0)
-                dones_groups[key] = th.cat((dones_groups[key],
-                                            th.unsqueeze(buffer.dones[idx, :], 0)), 0)
-                rewards_groups[key] = th.cat((rewards_groups[key],
-                                              th.unsqueeze(buffer.rewards[idx, :], 0)), 0)
-                action_groups[key] = th.cat((action_groups[key],
-                                             th.unsqueeze(buffer.actions[idx, :], 0)), 0)
-            else:
-                time_dict[key] = time[idx, :]
-                observations_groups[key] = th.unsqueeze(buffer.observations[idx, :], 0)
-                next_observations_groups[key] = th.unsqueeze(buffer.next_observations[idx, :], 0)
-                dones_groups[key] = th.unsqueeze(buffer.dones[idx, :], 0)
-                rewards_groups[key] = th.unsqueeze(buffer.rewards[idx, :], 0)
-                action_groups[key] = th.unsqueeze(buffer.actions[idx, :], 0)
+        time = th.index_select(time, 0, indicies)
+        observations = th.index_select(buffer.observations, 0, indicies)
+        next_observations = th.index_select(buffer.next_observations, 0, indicies)
+        rewards = th.index_select(buffer.rewards, 0, indicies)
+        dones = th.index_select(buffer.dones, 0,indicies)
+        actions = th.index_select(buffer.actions, 0, indicies)
 
+        time_dict = {}
+        split_dict = {}
+
+        for idx in range(time.shape[0]):
+            key = (time[idx, 0].item(), time[idx, 1].item())
+            if key in time_dict.keys():
+                split_dict[key] += 1
+            else:
+                split_dict[key] = 1
+                time_dict[key] = time[idx, :].to(self.device)
+
+        split_list = list(split_dict.values())
+        time_keys = list(time_dict.keys())
+        observations_groups = {time_keys[i]: th.split(observations, split_list, 0)[i].to(self.device) for i in range(len(time_keys))}
+        next_observations_groups = {time_keys[i]: th.split(next_observations, split_list, 0)[i].to(self.device) for i in range(len(time_keys))}
+        dones_groups = {time_keys[i]: th.split(dones, split_list, 0)[i].to(self.device) for i in range(len(time_keys))}
+        rewards_groups = {time_keys[i]: th.split(rewards, split_list, 0)[i].to(self.device) for i in range(len(time_keys))}
+        action_groups = {time_keys[i]: th.split(actions, split_list, 0)[i].to(self.device) for i in range(len(time_keys))}
+
+        return time_dict, observations_groups, next_observations_groups, dones_groups, rewards_groups, action_groups
+
+    def calc_loss_ReplayBufferSamples(self, buffer: ReplayBufferSamples) -> Tuple[th.Tensor, ReplayBufferSamples]:
+        start_grouping = time.time()
+        time_dict, observations_groups, next_observations_groups, dones_groups, rewards_groups, action_groups = \
+            self.group_ReplayBufferSamples(buffer)
+        end_grouping = time.time()
         observations_buffer = None
         next_observations_buffer = None
         actions_buffer = None
@@ -111,8 +124,8 @@ class LatentOdeIcm(ICM):
             if t[0] < t[1]:
                 observations: th.Tensor = observations_groups[key][:, 1:]
                 action: th.Tensor = action_groups[key]
-                x = th.unsqueeze(th.cat((observations, action), 1), 1)
-                y, z0, qz0_mean, qz0_var = self.latentODE.forward(x, t)
+                x = th.cat((observations, action), 1)
+                y, _, _, _ = self.latentODE.forward(x, t)
                 next_observation_hat = y[:, 1, :observations.shape[1]]
                 next_observations_hat_buffer = self.concat_buffer(next_observations_hat_buffer,
                                                                   next_observation_hat)
@@ -122,6 +135,10 @@ class LatentOdeIcm(ICM):
 
         loss_values = self.loss_fn(next_observations_hat_buffer, next_observations_buffer[:, 1:], reduction='none')
         loss_values = th.mean(loss_values, dim=1, keepdim=True)
+        end_loss = time.time()
+        logger.record_mean('debug/icm_loss_timer', end_loss-end_grouping)
+        logger.record_mean('debug/icm_grouping_timer', end_grouping-start_grouping)
+        logger.record_mean('debug/icm_mini_batches_num', len(time_dict.keys()))
         return loss_values, ReplayBufferSamples(
             observations=observations_buffer.detach(),
             next_observations=next_observations_buffer.detach(),
@@ -129,7 +146,6 @@ class LatentOdeIcm(ICM):
             dones=dones_buffer.detach(),
             actions=actions_buffer.detach()
         )
-
 
     def concat_buffer(self, buffer, x):
         if buffer is None:

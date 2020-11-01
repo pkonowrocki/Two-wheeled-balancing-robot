@@ -1,19 +1,17 @@
-from collections import OrderedDict
 from typing import Tuple, Iterator, Union, Callable, Dict, Any, Type, Optional
-from stable_baselines3.common import logger
 import gym
-import numpy as np
 import torch as th
 import torch as tr
 from stable_baselines3.common.buffers import RolloutBuffer, ReplayBuffer
 from stable_baselines3.common.type_aliases import ReplayBufferSamples
-from torch import Tensor, cuda
+from torch import Tensor
 from torch.nn import functional as F, Parameter
 import torch.nn as nn
 from torchdiffeq import odeint
 import time
+from stable_baselines3.common import logger
 from LatentODE.ModuleODE import ModuleODE, BaseModuleODE
-from algorithms.icm import ICM
+from algorithms.icm.icm import ICM
 
 
 class OdeIcm(ICM):
@@ -66,51 +64,6 @@ class OdeIcm(ICM):
 
     def calc_RolloutBuffer(self, buffer: RolloutBuffer) -> ReplayBufferSamples:
         raise NotImplemented()
-
-    # def group_ReplayBufferSamples(self, buffer: ReplayBufferSamples):
-    #     buffer = ReplayBufferSamples(
-    #         observations=buffer.observations.detach().cpu(),
-    #         next_observations=buffer.next_observations.detach().cpu(),
-    #         actions=buffer.actions.detach().cpu(),
-    #         dones=buffer.dones.detach().cpu(),
-    #         rewards=buffer.rewards.detach().cpu()
-    #     )
-    #     time: th.Tensor = th.stack((buffer.observations[:, 0], buffer.next_observations[:, 0]), dim=1)
-    #     observations_groups = {}
-    #     next_observations_groups = {}
-    #     time_dict = {}
-    #     dones_groups = {}
-    #     rewards_groups = {}
-    #     action_groups = {}
-    #     # for each idx in batch
-    #     for idx in range(time.shape[0]):
-    #         key = str(time[idx, :])
-    #         if key in time_dict.keys():
-    #             observations_groups[key] = th.cat((observations_groups[key],
-    #                                                th.unsqueeze(buffer.observations[idx, :], 0)), 0)
-    #             next_observations_groups[key] = th.cat((next_observations_groups[key],
-    #                                                     th.unsqueeze(buffer.next_observations[idx, :], 0)), 0)
-    #             dones_groups[key] = th.cat((dones_groups[key],
-    #                                         th.unsqueeze(buffer.dones[idx, :], 0)), 0)
-    #             rewards_groups[key] = th.cat((rewards_groups[key],
-    #                                           th.unsqueeze(buffer.rewards[idx, :], 0)), 0)
-    #             action_groups[key] = th.cat((action_groups[key],
-    #                                          th.unsqueeze(buffer.actions[idx, :], 0)), 0)
-    #         else:
-    #             time_dict[key] = time[idx, :]
-    #             observations_groups[key] = th.unsqueeze(buffer.observations[idx, :], 0)
-    #             next_observations_groups[key] = th.unsqueeze(buffer.next_observations[idx, :], 0)
-    #             dones_groups[key] = th.unsqueeze(buffer.dones[idx, :], 0)
-    #             rewards_groups[key] = th.unsqueeze(buffer.rewards[idx, :], 0)
-    #             action_groups[key] = th.unsqueeze(buffer.actions[idx, :], 0)
-    #     for key in time_dict:
-    #         time_dict[key] = time_dict[key].to(self.device)
-    #         observations_groups[key] = observations_groups[key].to(self.device)
-    #         next_observations_groups[key] = next_observations_groups[key].to(self.device)
-    #         dones_groups[key] = dones_groups[key].to(self.device)
-    #         rewards_groups[key] = rewards_groups[key].to(self.device)
-    #         action_groups[key] = action_groups[key].to(self.device)
-    #     return time_dict, observations_groups, next_observations_groups, dones_groups, rewards_groups, action_groups
 
     def group_ReplayBufferSamples(self, buffer: ReplayBufferSamples):
         buffer = ReplayBufferSamples(

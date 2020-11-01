@@ -11,7 +11,7 @@ from stable_baselines3.common.utils import polyak_update
 from stable_baselines3.sac.policies import SACPolicy
 from torch.nn import functional as F
 
-from algorithms.icm import ICM
+from algorithms.icm.icm import ICM
 from algorithms.policies.sac_policy_no_time import SACPolicyNoTime
 
 
@@ -110,15 +110,6 @@ class SAC_ICM(SAC):
             if self.use_sde:
                 self.actor.reset_noise()
 
-            # if we're using policy without time then we must cut time observation
-            if self.use_policy_without_time:
-                replay_data = ReplayBufferSamples(
-                    observations=SACPolicyNoTime.cut_observation(replay_data.observations),
-                    next_observations=SACPolicyNoTime.cut_observation(replay_data.next_observations),
-                    actions=replay_data.actions,
-                    dones=replay_data.dones,
-                    rewards=replay_data.rewards
-                )
             # Action by the current actor for the sampled state
             actions_pi, log_prob = self.actor.action_log_prob(replay_data.observations)
             log_prob = log_prob.reshape(-1, 1)

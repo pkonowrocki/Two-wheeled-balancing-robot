@@ -27,7 +27,7 @@ default_kw = {
         'balance_coef': 1,
         'ramp_max_deg': 30
     },
-    'model': SAC_ICM,
+    'model': SAC,
     'model_kw': {
         'policy': SACPolicyNoTime,
         'policy_kwargs': {

@@ -1,13 +1,10 @@
 import gym
 import torch as th
 from stable_baselines3 import SAC
-from stable_baselines3.sac.policies import SACPolicy
-
-from algorithms.latent_ode_icm import LatentOdeIcm
-from algorithms.ode_icm import OdeIcm
+from algorithms.icm.stationary_latent_ode_icm import StationaryLatentOdeIcm
+from algorithms.icm.stationary_ode_icm import StationaryOdeIcm
 from algorithms.policies.sac_policy_no_time import SACPolicyNoTime
 from algorithms.sac_icm import SAC_ICM
-from utils.no_time_env import NoTimeEnv
 from utils.simulation import run_simulation
 
 env = gym.make('balancingrobot-v0',
@@ -34,7 +31,7 @@ default_kw = {
             'activation_fn': th.nn.ELU,
             'net_arch': [256, 256]
         },
-        'icm': OdeIcm,
+        'icm': StationaryLatentOdeIcm,
         'verbose': 1,
     },
     'learn_kw': {
@@ -45,17 +42,5 @@ default_kw = {
 }
 
 run_simulation(env, 'C:\mag\Two-wheeled-balancing-robot\\tensorboard\\with_icm', default_kw)
-# model = SAC_ICM(policy=SACPolicyNoTime,
-#                 policy_kwargs={
-#                     'activation_fn': th.nn.ELU,
-#                     'net_arch': [256, 256]
-#                 },
-#                 icm=OdeIcm,
-#                 env=env,
-#                 verbose=1,
-#                 tensorboard_log=f'C:\mag\Two-wheeled-balancing-robot\\tensorboard\\with_icm')
-#
-# model.learn(total_timesteps=2e5, eval_freq=5000, n_eval_episodes=5)
-# env.close()
 
 
