@@ -13,7 +13,7 @@ env = gym.make('balancingrobot-v0',
                speed_coef=0.1,
                balance_coef=1,
                ramp_max_deg=20,
-               max_t=1000)
+               max_t=500)
 default_kw = {
     'env_kw': {
         'render': False,
@@ -31,16 +31,17 @@ default_kw = {
             'activation_fn': th.nn.ELU,
             'net_arch': [256, 256]
         },
-        'icm': StationaryLatentOdeIcm,
+        'icm': StationaryOdeIcm,
         'verbose': 1,
+        'device': 'auto'
     },
     'learn_kw': {
-        'total_timesteps': 1e5,
-        'eval_freq': 5000,
+        'total_timesteps': 5e5,
+        'eval_freq': 4999,
         'n_eval_episodes': 5,
     }
 }
 
-run_simulation(env, 'C:\mag\Two-wheeled-balancing-robot\\tensorboard\\with_icm', default_kw)
+run_simulation(env, 'C:\mag\Two-wheeled-balancing-robot\\tensorboard\\tests', default_kw)
 
 

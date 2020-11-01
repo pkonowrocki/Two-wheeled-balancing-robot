@@ -20,8 +20,28 @@ class ContinuousCriticNoTime(ContinuousCritic):
     def _forward_unimplemented(self, *input: Any) -> None:
         pass
 
-    def __init__(self, **kwargs):
-        super(ContinuousCriticNoTime, self).__init__(**kwargs)
+    def __init__(self,
+                 observation_space: gym.spaces.Space,
+                 action_space: gym.spaces.Space,
+                 net_arch: List[int],
+                 features_extractor: nn.Module,
+                 features_dim: int,
+                 activation_fn: Type[nn.Module] = nn.ReLU,
+                 normalize_images: bool = True,
+                 device: Union[th.device, str] = "auto",
+                 n_critics: int = 2,
+                 ):
+        super(ContinuousCriticNoTime, self).__init__(
+            observation_space=observation_space,
+            action_space=action_space,
+            net_arch=net_arch,
+            features_extractor=features_extractor,
+            features_dim=features_dim,
+            activation_fn=activation_fn,
+            normalize_images=normalize_images,
+            device=device,
+            n_critics=n_critics,
+        )
     
     def forward(self, obs: th.Tensor, actions: th.Tensor) -> Tuple[th.Tensor, ...]:
         obs = SACPolicyNoTime.cut_observation(obs)
@@ -31,8 +51,38 @@ class ContinuousCriticNoTime(ContinuousCritic):
 class ActorNoTime(Actor):
 
     def __init__(
-            self, **kwargs):
-        super(ActorNoTime, self).__init__(**kwargs)
+            self,
+            observation_space: gym.spaces.Space,
+            action_space: gym.spaces.Space,
+            net_arch: List[int],
+            features_extractor: nn.Module,
+            features_dim: int,
+            activation_fn: Type[nn.Module] = nn.ReLU,
+            use_sde: bool = False,
+            log_std_init: float = -3,
+            full_std: bool = True,
+            sde_net_arch: Optional[List[int]] = None,
+            use_expln: bool = False,
+            clip_mean: float = 2.0,
+            normalize_images: bool = True,
+            device: Union[th.device, str] = "auto",
+    ):
+        super(ActorNoTime, self).__init__(
+            observation_space=observation_space,
+            action_space=action_space,
+            net_arch=net_arch,
+            features_extractor=features_extractor,
+            features_dim=features_dim,
+            activation_fn=activation_fn,
+            use_sde=use_sde,
+            log_std_init=log_std_init,
+            full_std=full_std,
+            sde_net_arch=sde_net_arch,
+            use_expln=use_expln,
+            clip_mean=clip_mean,
+            normalize_images=normalize_images,
+            device=device
+        )
 
     def _forward_unimplemented(self, *input: Any) -> None:
         pass
