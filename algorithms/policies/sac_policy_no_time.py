@@ -147,6 +147,15 @@ class SACPolicyNoTime(SACPolicy):
         return observation[:, 1:]
 
     def make_actor(self) -> Actor:
+        if 'features_extractor' not in self.actor_kwargs:
+            if self.features_extractor is None:
+                raise ValueError()
+            self.actor_kwargs['features_extractor'] = self.features_extractor
+        if 'features_dim' not in self.actor_kwargs:
+            if self.features_dim is None:
+                raise ValueError()
+            self.actor_kwargs['features_dim'] = self.features_dim
+
         return ActorNoTime(
             observation_space=self.actor_kwargs['observation_space'],
             action_space=self.actor_kwargs['action_space'],
@@ -165,6 +174,15 @@ class SACPolicyNoTime(SACPolicy):
         ).to(self.device)
 
     def make_critic(self) -> ContinuousCritic:
+        if 'features_extractor' not in self.actor_kwargs:
+            if self.features_extractor is None:
+                raise ValueError()
+            self.actor_kwargs['features_extractor'] = self.features_extractor
+        if 'features_dim' not in self.actor_kwargs:
+            if self.features_dim is None:
+                raise ValueError()
+            self.actor_kwargs['features_dim'] = self.features_dim
+            
         return ContinuousCriticNoTime(
             observation_space=self.critic_kwargs['observation_space'],
             action_space=self.critic_kwargs['action_space'],
