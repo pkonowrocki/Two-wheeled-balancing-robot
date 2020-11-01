@@ -107,7 +107,7 @@ class SACPolicyNoTime(SACPolicy):
             use_expln: bool = False,
             clip_mean: float = 2.0,
             features_extractor_class: Type[BaseFeaturesExtractor] = FlattenExtractor,
-            features_extractor_kwargs: Optional[Dict[str, Any]] = None,
+            features_extractor_kwargs: Optional[Dict[str, Any]] = {},
             normalize_images: bool = True,
             optimizer_class: Type[th.optim.Optimizer] = th.optim.Adam,
             optimizer_kwargs: Optional[Dict[str, Any]] = None,
@@ -180,11 +180,11 @@ class SACPolicyNoTime(SACPolicy):
         if 'features_extractor' not in self.actor_kwargs:
             if self.features_extractor is None:
                 raise ValueError()
-            self.actor_kwargs['features_extractor'] = self.features_extractor
+            self.critic_kwargs['features_extractor'] = self.features_extractor
         if 'features_dim' not in self.actor_kwargs:
             if self.features_dim is None:
                 raise ValueError()
-            self.actor_kwargs['features_dim'] = self.features_dim
+            self.critic_kwargs['features_dim'] = self.features_dim
 
         return ContinuousCriticNoTime(
             observation_space=self.critic_kwargs['observation_space'],
