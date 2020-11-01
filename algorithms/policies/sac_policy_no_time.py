@@ -47,7 +47,7 @@ class SACPolicyNoTime(SACPolicy):
             action_space=action_space,
             lr_schedule=lr_schedule,
             net_arch=net_arch,
-            device=device,
+            # device=device,
             activation_fn=activation_fn,
             use_sde=use_sde,
             log_std_init=log_std_init,

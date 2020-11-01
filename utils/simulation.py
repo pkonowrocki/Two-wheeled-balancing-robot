@@ -27,7 +27,6 @@ default_kw = {
         'balance_coef': 1,
         'ramp_max_deg': 30
     },
-    'no_time': True,
     'model': SAC_ICM,
     'model_kw': {
         'policy': SACPolicyNoTime,
@@ -54,10 +53,6 @@ def run_simulation(env: gym.Env, path: str = default_path, kw: Dict[str, Optiona
     model = kw['model'](env=env,
                         tensorboard_log=path,
                         **kw['model_kw'])
-    model.learn(total_timesteps=1,
-                eval_freq=1,
-                eval_log_path=path,
-                eval_env=env)
 
     description = prune(default_kw)
     os.environ['DESC'] = str(description)

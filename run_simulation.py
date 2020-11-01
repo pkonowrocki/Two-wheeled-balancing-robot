@@ -17,18 +17,45 @@ env = gym.make('balancingrobot-v0',
                balance_coef=1,
                ramp_max_deg=20,
                max_t=1000)
+default_kw = {
+    'env_kw': {
+        'render': False,
+        'noise': True,
+        'speed_coef': 0.1,
+        'balance_coef': 1,
+        'ramp_max_deg': 20,
+        'max_t': 500
+    },
+    'no_time': False,
+    'model': SAC_ICM,
+    'model_kw': {
+        'policy': SACPolicyNoTime,
+        'policy_kwargs': {
+            'activation_fn': th.nn.ELU,
+            'net_arch': [256, 256]
+        },
+        'icm': OdeIcm,
+        'verbose': 1,
+    },
+    'learn_kw': {
+        'total_timesteps': 1e5,
+        'eval_freq': 5000,
+        'n_eval_episodes': 5,
+    }
+}
 
-model = SAC_ICM(policy=SACPolicyNoTime,
-                policy_kwargs={
-                    'activation_fn': th.nn.ELU,
-                    'net_arch': [256, 256]
-                },
-                icm=OdeIcm,
-                env=env,
-                verbose=1,
-                tensorboard_log=f'C:\mag\Two-wheeled-balancing-robot\\tensorboard\\with_icm')
+run_simulation(env, 'C:\mag\Two-wheeled-balancing-robot\\tensorboard\\with_icm', default_kw)
+# model = SAC_ICM(policy=SACPolicyNoTime,
+#                 policy_kwargs={
+#                     'activation_fn': th.nn.ELU,
+#                     'net_arch': [256, 256]
+#                 },
+#                 icm=OdeIcm,
+#                 env=env,
+#                 verbose=1,
+#                 tensorboard_log=f'C:\mag\Two-wheeled-balancing-robot\\tensorboard\\with_icm')
+#
+# model.learn(total_timesteps=2e5, eval_freq=5000, n_eval_episodes=5)
+# env.close()
 
-model.learn(total_timesteps=2e5, eval_freq=5000, n_eval_episodes=5)
-env.close()
 
-# run_simulation(env, 'C:\mag\Two-wheeled-balancing-robot\\tmp\\test')
