@@ -118,10 +118,7 @@ class SACPolicyNoTime(SACPolicy):
                                     high=observation_space.high[1:])
         else:
             raise NotImplemented()
-        # Create shared features extractor
-        self.features_extractor = features_extractor_class(observation_space, **features_extractor_kwargs)
-        self.features_dim = self.features_extractor.features_dim
-
+        self.features_extractor_class = features_extractor_class
         super(SACPolicyNoTime, self).__init__(
             observation_space=observation_space,
             action_space=action_space,
@@ -152,7 +149,10 @@ class SACPolicyNoTime(SACPolicy):
     def make_actor(self) -> Actor:
         if 'features_extractor' not in self.actor_kwargs:
             if self.features_extractor is None:
-                raise ValueError()
+                # Create shared features extractor
+                self.features_extractor = self.features_extractor_class(self.observation_space,
+                                                                        **self.features_extractor_kwargs)
+                self.features_dim = self.features_extractor.features_dim
             self.actor_kwargs['features_extractor'] = self.features_extractor
         if 'features_dim' not in self.actor_kwargs:
             if self.features_dim is None:
@@ -179,7 +179,10 @@ class SACPolicyNoTime(SACPolicy):
     def make_critic(self) -> ContinuousCritic:
         if 'features_extractor' not in self.actor_kwargs:
             if self.features_extractor is None:
-                raise ValueError()
+                # Create shared features extractor
+                self.features_extractor = self.features_extractor_class(self.observation_space,
+                                                                        **self.features_extractor_kwargs)
+                self.features_dim = self.features_extractor.features_dim
             self.critic_kwargs['features_extractor'] = self.features_extractor
         if 'features_dim' not in self.actor_kwargs:
             if self.features_dim is None:
