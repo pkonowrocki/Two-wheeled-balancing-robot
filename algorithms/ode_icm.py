@@ -1,3 +1,4 @@
+from collections import OrderedDict
 from typing import Tuple, Iterator, Union, Callable, Dict, Any, Type, Optional
 from stable_baselines3.common import logger
 import gym
@@ -7,26 +8,26 @@ from stable_baselines3.common.buffers import RolloutBuffer, ReplayBuffer
 from stable_baselines3.common.type_aliases import ReplayBufferSamples
 from torch import Tensor, cuda
 from torch.nn import functional as F, Parameter
+import torch.nn as nn
+from torchdiffeq import odeint
 
-from LatentODE.LatentODE import LatentODE
+from LatentODE.ModuleODE import ModuleODE, BaseModuleODE
 from algorithms.icm import ICM
 
 
-class LatentOdeIcm(ICM):
+class OdeIcm(ICM):
     def __init__(self,
                  observation_space: gym.spaces.Space = None,
                  action_space: gym.spaces.Space = None,
                  train_during_calculations: bool = True,
-                 latent_ode: Optional[LatentODE] = None,
-                 latent_size: int = 4,
-                 hidden_size: int = 4,
                  device: tr.device = None,
+                 ode_fun: ModuleODE = None,
                  loss_fn: Any = F.l1_loss,
                  optimizer: Optional[Union[Type[tr.optim.Optimizer], tr.optim.Optimizer]] = None,
                  optimizer_kwargs: Dict[str, Any] = {},
-                 reward_limiting: Callable[[th.Tensor], th.Tensor] = lambda x: th.clamp(x, -2, 2),
+                 reward_limiting: Callable[[th.Tensor], th.Tensor] = lambda x: 0.001*th.clamp(x, -1, 1),
                  ):
-        super(LatentOdeIcm, self).__init__(
+        super(OdeIcm, self).__init__(
             observation_space=observation_space,
             action_space=action_space,
             train_during_calculations=train_during_calculations,
@@ -34,24 +35,27 @@ class LatentOdeIcm(ICM):
             device=device
         )
 
-        if latent_ode:
-            self.latentODE = latent_ode
+        if ode_fun:
+            self.ode_fun = ode_fun.to(self.device)
         else:
-            self.latentODE = LatentODE(
-                latent_size=latent_size,
-                obs_size=observation_space.shape[0] + action_space.shape[0] - 1,
-                hidden_size=hidden_size,
-                output_size=observation_space.shape[0] - 1,
-                match=True,
-                device=self.device,
-            )
+            input_size = observation_space.shape[0] + action_space.shape[0] - 1
+            model = nn.Sequential(
+                    nn.Linear(input_size, 32),
+                    nn.Tanh(),
+                    nn.Linear(32, input_size)
+                )
+            self.ode_fun = BaseModuleODE(
+                is_stationary=True,
+                fun=model
+            ).to(self.device)
 
         if isinstance(optimizer, Type):
             self.optimizer = optimizer(**optimizer_kwargs)
         elif isinstance(optimizer, tr.optim.Optimizer):
             self.optimizer = optimizer
         else:
-            self.optimizer = tr.optim.Adam(self.latentODE.parameters(), lr=3e-3)
+            parameters = self.ode_fun.parameters()
+            self.optimizer = tr.optim.Adam(parameters, lr=3e-4)
 
         self.loss_fn = loss_fn
 
@@ -59,7 +63,7 @@ class LatentOdeIcm(ICM):
         pass
 
     def get_parameters(self) -> Iterator[Parameter]:
-        return self.latentODE.parameters()
+        return self.ode_fun.parameters()
 
     def calc_RolloutBuffer(self, buffer: RolloutBuffer) -> ReplayBufferSamples:
         raise NotImplemented()
@@ -111,8 +115,12 @@ class LatentOdeIcm(ICM):
             if t[0] < t[1]:
                 observations: th.Tensor = observations_groups[key][:, 1:]
                 action: th.Tensor = action_groups[key]
-                x = th.unsqueeze(th.cat((observations, action), 1), 1)
-                y, z0, qz0_mean, qz0_var = self.latentODE.forward(x, t)
+                x = th.cat((observations, action), 1)
+                y = odeint(self.ode_fun, x, t,
+                           method='euler',
+                           options={
+                            'step_size': 0.1
+                           }).permute(1, 0, 2)
                 next_observation_hat = y[:, 1, :observations.shape[1]]
                 next_observations_hat_buffer = self.concat_buffer(next_observations_hat_buffer,
                                                                   next_observation_hat)
@@ -129,7 +137,6 @@ class LatentOdeIcm(ICM):
             dones=dones_buffer.detach(),
             actions=actions_buffer.detach()
         )
-
 
     def concat_buffer(self, buffer, x):
         if buffer is None:

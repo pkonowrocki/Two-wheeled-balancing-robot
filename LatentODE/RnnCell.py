@@ -8,6 +8,7 @@ from torch.nn import Module, Sequential, Linear, Tanh, Parameter
 class RnnCell(Module, ABC):
 
     def __init__(self,
+                 use_forward: bool = True,
                  latent_size: int = 4,
                  obs_size: int = 14,
                  hidden_size: int = 25,
@@ -22,6 +23,7 @@ class RnnCell(Module, ABC):
         self.hidden_size = hidden_size
         self.latent_size = latent_size
         self.device = device
+        self.use_forward = use_forward
 
         self.i2h = Sequential(
             Linear(obs_size + hidden_size, hidden_size),
@@ -40,7 +42,7 @@ class RnnCell(Module, ABC):
             var: Tensor [batch_size x latent_size]
         """
         h = zeros(x.shape[0], self.hidden_size, device=self.device)
-        for t in reversed(range(x.shape[1])):
+        for t in range(x.shape[1]) if self.use_forward else reversed(range(x.shape[1])):
             obs = x[:, t, :]
             out, h = self.forward_rnn(obs, h)
         qz0_mean, qz0_logvar = out[:, :self.latent_size], out[:, self.latent_size:]
