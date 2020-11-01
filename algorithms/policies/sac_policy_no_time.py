@@ -118,6 +118,9 @@ class SACPolicyNoTime(SACPolicy):
                                     high=observation_space.high[1:])
         else:
             raise NotImplemented()
+        # Create shared features extractor
+        self.features_extractor = features_extractor_class(observation_space, **features_extractor_kwargs)
+        self.features_dim = self.features_extractor.features_dim
 
         super(SACPolicyNoTime, self).__init__(
             observation_space=observation_space,
@@ -182,7 +185,7 @@ class SACPolicyNoTime(SACPolicy):
             if self.features_dim is None:
                 raise ValueError()
             self.actor_kwargs['features_dim'] = self.features_dim
-            
+
         return ContinuousCriticNoTime(
             observation_space=self.critic_kwargs['observation_space'],
             action_space=self.critic_kwargs['action_space'],
