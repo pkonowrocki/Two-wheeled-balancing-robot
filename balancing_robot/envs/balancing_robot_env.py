@@ -182,14 +182,15 @@ class BalancingRobotEnv(gym.Env):
         r_wheel = p.getJointState(self.botId, BalancingRobotEnv.joints_names['right'])
         l_wheel = p.getJointState(self.botId, BalancingRobotEnv.joints_names['left'])
         result = np.concatenate((result,
-                                 np.array([l_wheel[1], -r_wheel[1]])/BalancingRobotEnv.robot_properties['max_angular_velocity'],
-                                 np.array(self.vd)/BalancingRobotEnv.robot_properties['max_angular_velocity']))
+                                 np.array([l_wheel[1], -r_wheel[1]]) / BalancingRobotEnv.robot_properties[
+                                     'max_angular_velocity'],
+                                 np.array(self.vd) / BalancingRobotEnv.robot_properties['max_angular_velocity']))
         result = np.concatenate(([self.t], result))
 
         return result
 
     def assign_action(self, action):
-        action = self.clamp_torque(action*BalancingRobotEnv.robot_properties['max_torque'])
+        action = self.clamp_torque(action * BalancingRobotEnv.robot_properties['max_torque'])
         p.setJointMotorControl2(bodyIndex=self.botId,
                                 jointIndex=BalancingRobotEnv.action_space_names['left'],
                                 controlMode=p.TORQUE_CONTROL,
@@ -211,9 +212,11 @@ class BalancingRobotEnv(gym.Env):
         fi_x = observation[BalancingRobotEnv.observation_space_names['fi_x']]
         wheels_speed = np.array([observation[BalancingRobotEnv.observation_space_names['w_l']],
                                  observation[BalancingRobotEnv.observation_space_names['w_r']]])
+        set_wheels_speed = np.array([observation[BalancingRobotEnv.observation_space_names['wd_l']],
+                                     observation[BalancingRobotEnv.observation_space_names['wd_r']]])
 
         balance = abs(fi_x)
-        speed = np.linalg.norm(wheels_speed - self.vd)
+        speed = np.linalg.norm(wheels_speed - set_wheels_speed)
         reward = (1 - balance * self.balance_coef - speed * self.speed_coef) / (self.balance_coef + self.speed_coef)
         logger.record_mean("env/reward_mean", reward)
         logger.record_mean("env/speed_mean", speed)

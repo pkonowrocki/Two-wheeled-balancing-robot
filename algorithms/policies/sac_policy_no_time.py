@@ -159,22 +159,7 @@ class SACPolicyNoTime(SACPolicy):
                 raise ValueError()
             self.actor_kwargs['features_dim'] = self.features_dim
 
-        return ActorNoTime(
-            observation_space=self.actor_kwargs['observation_space'],
-            action_space=self.actor_kwargs['action_space'],
-            net_arch=self.actor_kwargs['net_arch'],
-            features_extractor=self.actor_kwargs['features_extractor'],
-            features_dim=self.actor_kwargs['features_dim'],
-            activation_fn=self.actor_kwargs['activation_fn'],
-            use_sde=self.actor_kwargs['use_sde'],
-            log_std_init=self.actor_kwargs['log_std_init'],
-            full_std=self.actor_kwargs['full_std'],
-            sde_net_arch=self.actor_kwargs['sde_net_arch'],
-            use_expln=self.actor_kwargs['use_expln'],
-            clip_mean=self.actor_kwargs['clip_mean'],
-            normalize_images=self.actor_kwargs['normalize_images'],
-            device=self.actor_kwargs['device']
-        ).to(self.device)
+        return ActorNoTime(**self.actor_kwargs).to(self.device)
 
     def make_critic(self) -> ContinuousCritic:
         if 'features_extractor' not in self.actor_kwargs:
@@ -189,17 +174,7 @@ class SACPolicyNoTime(SACPolicy):
                 raise ValueError()
             self.critic_kwargs['features_dim'] = self.features_dim
 
-        return ContinuousCriticNoTime(
-            observation_space=self.critic_kwargs['observation_space'],
-            action_space=self.critic_kwargs['action_space'],
-            net_arch=self.critic_kwargs['net_arch'],
-            features_extractor=self.critic_kwargs['features_extractor'],
-            features_dim=self.critic_kwargs['features_dim'],
-            activation_fn=self.critic_kwargs['activation_fn'],
-            normalize_images=self.critic_kwargs['normalize_images'],
-            device=self.critic_kwargs['device'],
-            n_critics=self.critic_kwargs['n_critics'],
-        ).to(self.device)
+        return ContinuousCriticNoTime(**self.critic_kwargs).to(self.device)
 
     def predict(
             self,
