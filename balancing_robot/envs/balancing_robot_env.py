@@ -10,6 +10,7 @@ import pybullet_data
 from gym import spaces
 from gym.utils import seeding
 from stable_baselines3.common import logger
+import matplotlib.pyplot as plt
 
 
 class BalancingRobotEnv(gym.Env):
@@ -69,11 +70,17 @@ class BalancingRobotEnv(gym.Env):
                  noisy_dt: bool = False,
                  std_dt: float = 0.01,
                  speed_coef: float = 0.5,
-                 balance_coef: float = 1):
+                 balance_coef: float = 1,
+                 use_plots: bool = False,
+                 plots: Sequence[int] = []):
         if use_queues:
             self.time_queue: deque = deque([], 10)
         else:
             self.time_queue: deque = None
+        self.use_plots = use_plots
+        self.plots = plots
+        self.axes = None
+        self.fig = None
         self.ramp_max_deg = ramp_max_deg
         self.speed_coef = speed_coef
         self.balance_coef = balance_coef
@@ -119,11 +126,29 @@ class BalancingRobotEnv(gym.Env):
 
         p.setAdditionalSearchPath(pybullet_data.getDataPath())
 
+
     def seed_init(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
         return [seed]
 
     def reset(self):
+        if self.use_plots:
+            os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
+            plt.ion()
+            if self.fig is None:
+                self.fig, self.axes = plt.subplots(len(self.plots), 1)
+            else:
+                for ax in self.axes:
+                    ax.clear()
+            for idx in range(len(self.plots)):
+                # self.axes[idx].set_ylabel(BalancingRobotEnv.observation_space_names.keys()[
+                #     BalancingRobotEnv.observation_space_names.values().index(
+                #         self.plots[idx]
+                #     )
+                #               ])
+                self.axes[idx].set_xlabel('time')
+            self.fig.show()
+
         self.step_counter = 0
         self.t = 0
         self.vd = self.speed_profile_function(self.t)
@@ -167,6 +192,13 @@ class BalancingRobotEnv(gym.Env):
         self.vd = self.speed_profile_function(self.t)
 
         self.observation = self.get_state()
+        if self.use_plots:
+            for idx in range(len(self.plots)):
+                self.axes[idx].scatter(self.t, self.observation[
+                    self.plots[idx]
+                ], marker='.', c='blue')
+            self.fig.canvas.flush_events()
+
 
         return self.observation, reward, done, {}
 
@@ -178,7 +210,6 @@ class BalancingRobotEnv(gym.Env):
         if self.noise:
             noise = np.random.normal(0, 1.e-5, result.size)
             result = noise + result
-
         r_wheel = p.getJointState(self.botId, BalancingRobotEnv.joints_names['right'])
         l_wheel = p.getJointState(self.botId, BalancingRobotEnv.joints_names['left'])
         result = np.concatenate((result,
@@ -190,18 +221,22 @@ class BalancingRobotEnv(gym.Env):
         return result
 
     def assign_action(self, action):
-        action = self.clamp_torque(action * BalancingRobotEnv.robot_properties['max_torque'])
-        p.setJointMotorControl2(bodyIndex=self.botId,
-                                jointIndex=BalancingRobotEnv.action_space_names['left'],
-                                controlMode=p.TORQUE_CONTROL,
-                                force=action[BalancingRobotEnv.action_space_names['left']])
-        p.setJointMotorControl2(bodyIndex=self.botId,
-                                jointIndex=BalancingRobotEnv.action_space_names['right'],
-                                controlMode=p.TORQUE_CONTROL,
-                                force=-action[BalancingRobotEnv.action_space_names['right']])
+        action = self.clamp_torque(action * BalancingRobotEnv.robot_properties['max_angular_velocity'])
+        action = np.array([action[0], -action[1]])
+        p.setJointMotorControlArray(
+            bodyUniqueId=self.botId,
+            jointIndices=list(BalancingRobotEnv.joints_names.values()),
+            controlMode=p.VELOCITY_CONTROL,
+            targetVelocities=action,
+            forces=[BalancingRobotEnv.robot_properties['max_torque'],
+                    BalancingRobotEnv.robot_properties['max_torque']]
+        )
+        p.stepSimulation()
+        r_wheel = p.getJointState(self.botId, BalancingRobotEnv.joints_names['right'])
+        l_wheel = p.getJointState(self.botId, BalancingRobotEnv.joints_names['left'])
 
     def clamp_torque(self, action):
-        max_torque = BalancingRobotEnv.robot_properties['max_torque']
+        max_torque = BalancingRobotEnv.robot_properties['max_angular_velocity']
         return [self.clamp(action[0], max_torque, -max_torque),
                 self.clamp(action[1], max_torque, -max_torque)]
 
@@ -217,7 +252,7 @@ class BalancingRobotEnv(gym.Env):
 
         balance = abs(fi_x)
         speed = np.linalg.norm(wheels_speed - set_wheels_speed)
-        reward = (1 - balance * self.balance_coef - speed * self.speed_coef) / (self.balance_coef + self.speed_coef)
+        reward = 1 - (balance * self.balance_coef + speed * self.speed_coef) / (self.balance_coef + self.speed_coef)
         logger.record_mean("env/reward_mean", reward)
         logger.record_mean("env/speed_mean", speed)
         logger.record_mean("env/balance_mean", balance)

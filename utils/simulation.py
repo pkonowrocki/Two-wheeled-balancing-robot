@@ -46,13 +46,13 @@ default_kw = {
 default_path = './logs'
 
 
-def run_simulation(env: gym.Env, path: str = default_path, kw: Dict[str, Optional[Any]] = default_kw):
+def run_simulation(env: gym.Env, path: str = default_path, kw: Dict[str, Optional[Any]] = default_kw, model = None):
     if 'no_time' in kw.keys() and kw['no_time']:
         env = NoTimeEnv(env)
-
-    model = kw['model'](env=env,
-                        tensorboard_log=path,
-                        **kw['model_kw'])
+    if model is None:
+        model = kw['model'](env=env,
+                            tensorboard_log=path,
+                            **kw['model_kw'])
 
     description = prune(default_kw)
     os.environ['DESC'] = str(description)
@@ -66,6 +66,7 @@ def run_simulation(env: gym.Env, path: str = default_path, kw: Dict[str, Optiona
                 eval_log_path=path,
                 **kw['learn_kw'])
     env.close()
+    return model
 
 
 def prune(obj):

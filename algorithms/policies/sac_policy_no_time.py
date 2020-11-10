@@ -15,38 +15,8 @@ from stable_baselines3.common.preprocessing import get_action_dim, is_image_spac
 from stable_baselines3.common.torch_layers import BaseFeaturesExtractor, FlattenExtractor, NatureCNN, create_mlp
 from stable_baselines3.sac.policies import SACPolicy, Actor
 
+from algorithms.policies.continuous_critic_no_time import ContinuousCriticNoTime
 
-class ContinuousCriticNoTime(ContinuousCritic):
-    def _forward_unimplemented(self, *input: Any) -> None:
-        pass
-
-    def __init__(self,
-                 observation_space: gym.spaces.Space,
-                 action_space: gym.spaces.Space,
-                 net_arch: List[int],
-                 features_extractor: nn.Module,
-                 features_dim: int,
-                 activation_fn: Type[nn.Module] = nn.ReLU,
-                 normalize_images: bool = True,
-                 device: Union[th.device, str] = "auto",
-                 n_critics: int = 2,
-                 ):
-        super(ContinuousCriticNoTime, self).__init__(
-            observation_space=observation_space,
-            action_space=action_space,
-            net_arch=net_arch,
-            features_extractor=features_extractor,
-            features_dim=features_dim,
-            activation_fn=activation_fn,
-            normalize_images=normalize_images,
-            device=device,
-            n_critics=n_critics,
-        )
-    
-    def forward(self, obs: th.Tensor, actions: th.Tensor) -> Tuple[th.Tensor, ...]:
-        obs = SACPolicyNoTime.cut_observation(obs)
-        return super(ContinuousCriticNoTime, self).forward(obs, actions)
-    
 
 class ActorNoTime(Actor):
 

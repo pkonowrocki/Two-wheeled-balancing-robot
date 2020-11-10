@@ -28,7 +28,7 @@ class StationaryLatentOdeIcm(ICM):
                  loss_fn: Any = F.l1_loss,
                  optimizer: Optional[Union[Type[tr.optim.Optimizer], tr.optim.Optimizer]] = None,
                  optimizer_kwargs: Dict[str, Any] = {},
-                 reward_limiting: Callable[[th.Tensor], th.Tensor] = lambda x: th.clamp(x, -2, 2),
+                 reward_limiting: Callable[[th.Tensor], th.Tensor] = lambda x: 0.1*th.clamp(x, -2, 2),
                  ):
         super(StationaryLatentOdeIcm, self).__init__(
             observation_space=observation_space,

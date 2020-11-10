@@ -11,11 +11,19 @@ from stable_baselines3.common import logger
 class LessBalancingRobotEnv(BalancingRobotEnv):
     observation_space_names = {
         'time': 0,
-        'fi_x': 1,
-        'w_l': 2,
-        'w_r': 3,
-        'wd_l': 4,
-        'wd_r': 5
+        'fi_x': 4,
+        'fi_y': 5,
+        'fi_z': 6,
+        'v_x': 7,
+        'v_y': 8,
+        'v_z': 9,
+        'w_x': 10,
+        'w_y': 11,
+        'w_z': 12,
+        'w_l': 13,
+        'w_r': 14,
+        'wd_l': 15,
+        'wd_r': 16
     }
 
     def __init__(self,
@@ -46,8 +54,10 @@ class LessBalancingRobotEnv(BalancingRobotEnv):
             balance_coef=balance_coef
         )
 
-        self.observation_space = spaces.Box(low=np.array([0, -math.pi, -1, -1, -1, -1]),
-                                            high=np.array([math.inf, math.pi,  1, 1, 1, 1]))
+        self.observation_space = spaces.Box(low=np.array([0, -math.pi, -math.inf, -math.inf,
+                                                          -math.inf, -math.inf]),
+                                            high=np.array([math.inf, math.pi,  math.inf,
+                                                           math.inf, math.inf, math.inf]))
 
     def get_state(self) -> np.ndarray:
         obs = super(LessBalancingRobotEnv, self).get_state()
@@ -75,12 +85,10 @@ class LessBalancingRobotEnv(BalancingRobotEnv):
         fi_x = observation[LessBalancingRobotEnv.observation_space_names['fi_x']]
         wheels_speed = np.array([observation[LessBalancingRobotEnv.observation_space_names['w_l']],
                                  observation[LessBalancingRobotEnv.observation_space_names['w_r']]])
-        set_wheels_speed = np.array([observation[LessBalancingRobotEnv.observation_space_names['wd_l']],
-                                     observation[LessBalancingRobotEnv.observation_space_names['wd_r']]])
 
         balance = abs(fi_x)
-        speed = np.linalg.norm(wheels_speed - set_wheels_speed)
-        reward = 1 - (balance * self.balance_coef + speed * self.speed_coef) / (self.balance_coef + self.speed_coef)
+        speed = np.linalg.norm(wheels_speed - self.vd)
+        reward = (1 - balance * self.balance_coef - speed * self.speed_coef) / (self.balance_coef + self.speed_coef)
         logger.record_mean("env/reward_mean", reward)
         logger.record_mean("env/speed_mean", speed)
         logger.record_mean("env/balance_mean", balance)

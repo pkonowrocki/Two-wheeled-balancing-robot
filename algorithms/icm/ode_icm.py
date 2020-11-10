@@ -24,7 +24,7 @@ class OdeIcm(ICM):
                  loss_fn: Any = F.l1_loss,
                  optimizer: Optional[Union[Type[tr.optim.Optimizer], tr.optim.Optimizer]] = None,
                  optimizer_kwargs: Dict[str, Any] = {},
-                 reward_limiting: Callable[[th.Tensor], th.Tensor] = lambda x: 0.001 * th.clamp(x, -1, 1),
+                 reward_limiting: Callable[[th.Tensor], th.Tensor] = lambda x: 0.1 * th.clamp(x, -1, 1),
                  ):
         super(OdeIcm, self).__init__(
             observation_space=observation_space,

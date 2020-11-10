@@ -1,14 +1,19 @@
 import gym
 import csv
 import numpy as np
-
+import os
 
 class LoggerEnv(gym.Env):
     def __init__(self,
                  filename: str,
                  env: gym.Env,
+                 path: str = None,
                  freq: int = 500):
         self.__dict__ = env.__dict__
+        if path is not None:
+            if not os.path.isdir(path):
+                os.mkdir(path)
+            filename = path + filename
         self.env = env
         self.csvfile = open(filename, 'w',
                             newline='')
