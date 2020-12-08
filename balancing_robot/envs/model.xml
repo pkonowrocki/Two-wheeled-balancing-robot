@@ -14,33 +14,33 @@
       <geometry>
         <box size="0.2 0.05 0.5"/>
       </geometry>
-      <origin rpy="0 0 0" xyz="0 0.0 0.3"/>
+      <origin rpy="0 0 0" xyz="0 0.0 0.35"/>
       <material name="white"/>
     </visual>
     <collision>
       <geometry>
         <box size="0.2 0.05 0.5"/>
       </geometry>
-      <origin rpy="0 0 0" xyz="0 0.0 0.3"/>
+      <origin rpy="0 0 0" xyz="0 0.0 0.35"/>
     </collision>
     <inertial>
       <mass value="0.8"/>
-      <inertia ixx="0.10833333" ixy="0.0" ixz="0.0" iyy="0.013333333" iyz="0.0" izz="0.002833333"/>
-      <origin rpy="0 0 0" xyz="0 0.0 0.3"/>
+      <inertia ixx="0.2833333" ixy="0.0" ixz="0.0" iyy="0.013333333" iyz="0.0" izz="0.002833333"/>
+      <origin rpy="0 0 0" xyz="0 0.0 0.35"/>
     </inertial>
   </link>
 
   <link name="l_wheel">
     <visual>
       <geometry>
-        <cylinder length="0.02" radius="0.1"/>
+        <cylinder length="0.02" radius="0.15"/>
       </geometry>
       <origin rpy="0 1.5707963 0" xyz="0 0 0"/>
       <material name="black"/>
     </visual>
     <collision>
       <geometry>
-        <cylinder length="0.02" radius="0.1"/>
+        <cylinder length="0.02" radius="0.15"/>
       </geometry>
       <origin rpy="0 1.5707963 0" xyz="0 0 0"/>
       <contact_coefficients mu="0.8" />
@@ -78,7 +78,7 @@
     <parent link="torso"/>
     <child link="l_wheel"/>
     <axis xyz="-1 0 0"/>
-    <limit effort="50" velocity="26.7"/>
+    <limit effort="200" velocity="26.7"/>
     <origin rpy="0 0 0" xyz="-0.11 0.0 0.15"/>
   </joint>
 
@@ -86,7 +86,7 @@
     <parent link="torso"/>
     <child link="r_wheel"/>
     <axis xyz="1 0 0"/>
-   <limit effort="50" velocity="26.7"/>
+   <limit effort="200" velocity="26.7"/>
    <origin rpy="0 0 0" xyz="0.11 0.0 0.15"/>
   </joint>
 

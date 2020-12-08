@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 class BalancingRobotEnv(gym.Env):
     robot_properties = {
         'max_angular_velocity': 26.7,
-        'max_torque': 5,
+        'max_torque': 25,
         'gravity': -9.87,
         'model': "model.xml",
         'plane_model': "plane.urdf",
@@ -45,7 +45,9 @@ class BalancingRobotEnv(gym.Env):
         'w_l': 13,
         'w_r': 14,
         'wd_l': 15,
-        'wd_r': 16
+        'wd_r': 16,
+        's_l': 17,
+        's_r': 18
     }
 
     action_space_names = {
@@ -71,6 +73,7 @@ class BalancingRobotEnv(gym.Env):
                  std_dt: float = 0.01,
                  speed_coef: float = 0.5,
                  balance_coef: float = 1,
+                 use_torque: bool = True,
                  use_plots: bool = False,
                  plots: Sequence[int] = []):
         if use_queues:
@@ -86,20 +89,20 @@ class BalancingRobotEnv(gym.Env):
         self.balance_coef = balance_coef
         self.noise = noise
         self.seed_init(seed)
-        self.action_space = spaces.Box(low=np.array([-1, -1]),
-                                       high=np.array([1, 1]))
+        self.action_space = spaces.Box(low=np.array([-1]),
+                                       high=np.array([1]))
         self.observation_space = spaces.Box(low=np.array([0,
                                                           -math.inf, -math.inf, -math.inf,
                                                           -math.inf, -math.inf, -math.inf,
-                                                          -math.inf, -math.pi, -math.pi,
-                                                          -math.pi, -math.inf, -math.inf,
-                                                          -1, -1, -1, -1]),
+                                                          -math.inf, -math.inf, -math.inf,
+                                                          -math.inf, -math.inf, -math.inf,
+                                                          -1, -1, -1, -1, -1, -1]),
                                             high=np.array([math.inf,
                                                            math.inf, math.inf, math.inf,
                                                            math.inf, math.inf, math.inf,
-                                                           math.pi, math.pi, math.pi,
                                                            math.inf, math.inf, math.inf,
-                                                           1, 1, 1, 1]))
+                                                           math.inf, math.inf, math.inf,
+                                                           1, 1, 1, 1, 1, 1]))
 
         self.max_rad = np.abs(BalancingRobotEnv.robot_properties['max_deg'] * math.pi / 180)
         self.t = 0
@@ -126,6 +129,11 @@ class BalancingRobotEnv(gym.Env):
 
         p.setAdditionalSearchPath(pybullet_data.getDataPath())
 
+        if use_torque:
+            self.clamp_value = BalancingRobotEnv.robot_properties['max_torque']
+        else:
+            self.clamp_value = BalancingRobotEnv.robot_properties['max_angular_velocity']
+        self.use_torque = use_torque
 
     def seed_init(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
@@ -133,7 +141,7 @@ class BalancingRobotEnv(gym.Env):
 
     def reset(self):
         if self.use_plots:
-            os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
+            os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
             plt.ion()
             if self.fig is None:
                 self.fig, self.axes = plt.subplots(len(self.plots), 1)
@@ -168,20 +176,33 @@ class BalancingRobotEnv(gym.Env):
         self.planeId = p.loadURDF(fileName=BalancingRobotEnv.robot_properties['plane_model'],
                                   basePosition=planePosition)
 
-        cubeStartPos = [0, 0, 0]
-        cubeStartOrientation = p.getQuaternionFromEuler([np.random.normal() * 1e-3, 0, np.random.normal() * 1e-3])
+        cubeStartPos = [0, 0, 0.0]
+        cubeStartOrientation = p.getQuaternionFromEuler(
+            [np.random.normal(loc=0.0872665, scale=0.0523599), 0, 0*np.random.normal(loc=0.0, scale=2*0.081799)])
+
+        # cubeStartOrientation = p.getQuaternionFromEuler(
+        #     [0.0872664626, 0, 0])
+        #
+        cubeStartOrientation = p.getQuaternionFromEuler(
+            [0.2, 0, 0])
 
         self.botId = p.loadURDF(fileName=os.path.join(self.path, BalancingRobotEnv.robot_properties['model']),
                                 basePosition=cubeStartPos,
                                 baseOrientation=cubeStartOrientation)
-        self.observation = self.get_state()
+
+        for i in list(BalancingRobotEnv.joints_names.values()):
+            p.resetJointState(self.botId, i, 0, 0)
+            p.setJointMotorControl2(bodyIndex=self.botId,
+                                    jointIndex=i,
+                                    controlMode=p.VELOCITY_CONTROL,
+                                    targetVelocity=0,
+                                    force=0)
+        self.observation = self.get_state(np.array([0]))
 
         return self.observation
 
     def step(self, action):
         self.assign_action(action)
-        reward = self.get_reward(self.observation)
-        done = self.check_done(self.observation)
         time_step = self.dt
         if self.noisy_dt:
             time_step = self.dt + np.random.normal(scale=self.std_dt)
@@ -191,7 +212,7 @@ class BalancingRobotEnv(gym.Env):
         self.step_counter += 1
         self.vd = self.speed_profile_function(self.t)
 
-        self.observation = self.get_state()
+        self.observation = self.get_state(action)
         if self.use_plots:
             for idx in range(len(self.plots)):
                 self.axes[idx].scatter(self.t, self.observation[
@@ -199,10 +220,12 @@ class BalancingRobotEnv(gym.Env):
                 ], marker='.', c='blue')
             self.fig.canvas.flush_events()
 
+        reward, info = self.get_reward(self.observation)
+        done = self.check_done(self.observation)
 
-        return self.observation, reward, done, {}
+        return self.observation, reward, done, info
 
-    def get_state(self) -> np.ndarray:
+    def get_state(self, action) -> np.ndarray:
         position, orientation = p.getBasePositionAndOrientation(self.botId)
         orientation_euler = p.getEulerFromQuaternion(orientation)
         linear, angular = p.getBaseVelocity(self.botId)
@@ -215,33 +238,36 @@ class BalancingRobotEnv(gym.Env):
         result = np.concatenate((result,
                                  np.array([l_wheel[1], -r_wheel[1]]) / BalancingRobotEnv.robot_properties[
                                      'max_angular_velocity'],
-                                 np.array(self.vd) / BalancingRobotEnv.robot_properties['max_angular_velocity']))
+                                 np.array(self.vd) / BalancingRobotEnv.robot_properties['max_angular_velocity'],
+                                 action, action))
         result = np.concatenate(([self.t], result))
 
         return result
 
     def assign_action(self, action):
-        action = self.clamp_torque(action * BalancingRobotEnv.robot_properties['max_angular_velocity'])
-        action = np.array([action[0], -action[1]])
-        p.setJointMotorControlArray(
-            bodyUniqueId=self.botId,
-            jointIndices=list(BalancingRobotEnv.joints_names.values()),
-            controlMode=p.VELOCITY_CONTROL,
-            targetVelocities=action,
-            forces=[BalancingRobotEnv.robot_properties['max_torque'],
-                    BalancingRobotEnv.robot_properties['max_torque']]
-        )
-        p.stepSimulation()
-        r_wheel = p.getJointState(self.botId, BalancingRobotEnv.joints_names['right'])
-        l_wheel = p.getJointState(self.botId, BalancingRobotEnv.joints_names['left'])
-
-    def clamp_torque(self, action):
-        max_torque = BalancingRobotEnv.robot_properties['max_angular_velocity']
-        return [self.clamp(action[0], max_torque, -max_torque),
-                self.clamp(action[1], max_torque, -max_torque)]
+        logger.record_mean("env/action_mean", action)
+        action = np.power(action, 1)
+        action = self.clamp(action * self.clamp_value, self.clamp_value, -self.clamp_value)
+        action = np.array([action[0], -action[0]])
+        if self.use_torque:
+            p.setJointMotorControlArray(
+                bodyUniqueId=self.botId,
+                jointIndices=list(BalancingRobotEnv.joints_names.values()),
+                controlMode=p.TORQUE_CONTROL,
+                forces=action
+            )
+        else:
+            p.setJointMotorControlArray(
+                bodyUniqueId=self.botId,
+                jointIndices=list(BalancingRobotEnv.joints_names.values()),
+                controlMode=p.VELOCITY_CONTROL,
+                targetVelocities=action,
+                forces=[BalancingRobotEnv.robot_properties['max_torque'],
+                        BalancingRobotEnv.robot_properties['max_torque']]
+            )
 
     def clamp(self, value, max_value, min_value):
-        return max(min(max_value, value), min_value)
+        return [max(min(max_value, v), min_value) for v in value]
 
     def get_reward(self, observation):
         fi_x = observation[BalancingRobotEnv.observation_space_names['fi_x']]
@@ -250,13 +276,18 @@ class BalancingRobotEnv(gym.Env):
         set_wheels_speed = np.array([observation[BalancingRobotEnv.observation_space_names['wd_l']],
                                      observation[BalancingRobotEnv.observation_space_names['wd_r']]])
 
+        l = abs(observation[BalancingRobotEnv.observation_space_names['w_l']] - observation[BalancingRobotEnv.observation_space_names['wd_l']])
+        r = abs(observation[BalancingRobotEnv.observation_space_names['w_r']] - observation[
+            BalancingRobotEnv.observation_space_names['wd_r']])
         balance = abs(fi_x)
         speed = np.linalg.norm(wheels_speed - set_wheels_speed)
-        reward = 1 - (balance * self.balance_coef + speed * self.speed_coef) / (self.balance_coef + self.speed_coef)
+        reward = 10 - (balance * self.balance_coef
+                      + (l+r) * self.speed_coef)
+                      # + abs(observation[BalancingRobotEnv.observation_space_names['w_x']]) * self.speed_coef)
         logger.record_mean("env/reward_mean", reward)
         logger.record_mean("env/speed_mean", speed)
         logger.record_mean("env/balance_mean", balance)
-        return reward
+        return reward, {'speed': speed, 'balance': balance}
 
     def check_done(self, observation):
         is_done = self.t > self.max_t or \

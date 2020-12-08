@@ -52,8 +52,7 @@ class ICM(ABC):
 
     def calc_ReplayBufferSamples(self, buffer: ReplayBufferSamples) -> ReplayBufferSamples:
         if not self.train_during_calculations:
-            with th.no_grad():
-                loss_values = self.calc_loss_ReplayBufferSamples(buffer)
+            loss_values, buffer = self.calc_loss_ReplayBufferSamples(buffer)
         else:
             self.optimizer.zero_grad()
             loss_values, buffer = self.calc_loss_ReplayBufferSamples(buffer)

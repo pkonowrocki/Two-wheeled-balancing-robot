@@ -1,0 +1,280 @@
+<?xml version="1.0"?>
+<robot name="TestBot">
+
+<!-- Base Link: Torso -->
+<link name ="Body">
+    <visual>
+		<geometry>
+			<mesh filename="Kobot/robotBody.obj"  scale="0.01 0.01 0.01" />
+		</geometry>	 
+    </visual>
+    <collision>	
+      <geometry>
+        <mesh filename="Kobot/robotBody.obj"  scale="0.01 0.01 0.01" />
+      </geometry>
+    </collision>
+	<inertial>
+		<mass value="0.4"/>
+		<inertia ixx="0.001148" ixy="0.0" ixz="0.0" iyy="0.0008363" iyz="0.0" izz="0.001148"/>
+	</inertial>
+</link>
+
+ <!-- Join Left Leg   -->
+<link name ="leftLeg1">
+    <visual>
+		<origin  xyz="0 0 -0.09"/>
+		<geometry>
+			<mesh filename="Kobot/leftLeg1.obj"  scale="0.01 0.01 0.01" />
+		</geometry>
+    </visual>
+    <collision>
+		<origin  xyz="0 0 -0.09"/>
+		<geometry>
+			<mesh filename="Kobot/leftLeg1.obj"  scale="0.01 0.01 0.01" />
+		</geometry>	
+    </collision>
+	<inertial>
+		<mass value="0.078"/>
+		<inertia ixx="0.0002829" ixy="0.0" ixz="0.0" iyy="0.000005408" iyz="0.0" izz="0.0002849"/>
+	</inertial>
+  </link>
+  
+<joint name="body_to_LLeg1" type="revolute">
+    <parent link="Body"/>
+    <child link="leftLeg1"/>
+    <origin xyz="-0.02 -0.08 -0.035" rpy="0 -0.785398 0"/>
+    <axis xyz="0 1 0"/>
+	<limit effort="30" velocity="1" />
+	<joint_properties damping="0.002" friction="0.003"/>
+ </joint>
+  
+<link name ="leftLeg2">
+    <visual>
+		<origin  xyz="0 0 -0.06"/>
+		<geometry>
+			<mesh filename="Kobot/leftLeg3.obj"  scale="0.01 0.01 0.01" />
+		</geometry>
+    </visual>
+    <collision>
+		<origin  xyz="0 0 -0.06"/>
+		<geometry>
+			<mesh filename="Kobot/leftLeg3.obj"  scale="0.01 0.01 0.01" />
+		</geometry>
+    </collision>
+	<inertial>
+		<mass value="0.095"/>
+		<inertia ixx="0.0005048" ixy="0.0" ixz="0.0" iyy="0.000006587" iyz="0.0" izz="0.0005073"/>
+	</inertial>
+  </link>
+  
+ <joint name="LLeg1_to_LLeg2" type="revolute">
+    <parent link="leftLeg1"/>
+    <child link="leftLeg2"/>
+    <origin xyz="0 -0.01 -0.18" rpy="0 1.6308357 0"/>
+    <axis xyz="0 1 0"/>
+	<limit effort="30" velocity="1" />
+	<joint_properties damping="0.002" friction="0.003"/>
+  </joint>
+  
+  
+<link name ="leftLeg3">
+    <visual>
+		<origin  xyz="0 0 -0.09"/>
+		<geometry>
+			<mesh filename="Kobot/leftLeg2.obj"  scale="0.01 0.01 0.01" />
+		</geometry>
+    </visual>
+	<collision>
+		<origin  xyz="0 0 -0.09"/>
+		<geometry>
+			<mesh filename="Kobot/leftLeg2.obj"  scale="0.01 0.01 0.01" />
+		</geometry>
+    </collision>
+	<inertial>
+		<mass value="0.081"/>
+		<inertia ixx="0.0003167" ixy="0.0" ixz="0.0" iyy="0.000005616" iyz="0.0" izz="0.0003188"/>
+	</inertial>
+ </link>
+  
+<joint name="LLeg2_to_LLeg3" type="revolute">
+    <parent link="leftLeg2"/>
+    <child link="leftLeg3"/>
+    <origin xyz="0 0.01 0.045" rpy="0 1.752624 0"/>
+    <axis xyz="0 1 0"/>
+	<limit effort="30" velocity="1" />
+	<joint_properties damping="0.002" friction="0.003"/>
+</joint>
+  
+  
+<link name ="leftWheel">
+    <visual>
+		<geometry>
+			<mesh filename="Kobot/leftWheel.obj"  scale="0.01 0.01 0.01" />
+		</geometry>
+    </visual>
+    <collision>
+		<geometry>
+			<mesh filename="Kobot/leftWheel.obj"  scale="0.01 0.01 0.01" />
+		</geometry>
+    </collision>
+	<inertial>
+		<mass value="0.083"/>
+		<inertia ixx="0.0001103" ixy="0.0" ixz="0.0" iyy="0.0001103" iyz="0.0" izz="0.0002151"/>
+	</inertial>
+  </link>
+  
+<joint name="LLeg2_to_wheel" type="revolute">
+    <parent link="leftLeg2"/>
+    <child link="leftWheel"/>
+    <origin xyz="0 -0.02 -0.18" rpy="0 0 0 "/>
+    <axis xyz="0 1 0"/>
+	<limit effort="3000" velocity="200" />
+	<joint_properties damping="0.002" friction="0.003"/>
+</joint>
+  
+  
+  <!-- Join Right Leg  -->
+<link name ="rightLeg1"> 
+    <visual>
+		<origin  xyz="0 0 -0.09"/>
+		<geometry>
+			<mesh filename="Kobot/rightLeg1.obj"  scale="0.01 0.01 0.01" />
+		</geometry>
+    </visual>
+    <collision>
+		<origin  xyz="0 0 -0.09"/>
+		<geometry>
+			<mesh filename="Kobot/rightLeg1.obj"  scale="0.01 0.01 0.01" />
+		</geometry>	
+    </collision>	
+	<inertial>
+		<mass value="0.078"/>
+		<inertia ixx="0.0002829" ixy="0.0" ixz="0.0" iyy="0.000005408" iyz="0.0" izz="0.0002849"/>
+	</inertial>
+  </link>
+    
+<joint name="body_to_RLeg1" type="revolute">
+    <parent link="Body"/>
+    <child link="rightLeg1"/>
+    <origin xyz="-0.02 0.08 -0.035" rpy="0 -0.785398 0"/>
+    <axis xyz="0 1 0"/>
+	<limit effort="30" velocity="1" />
+	<joint_properties damping="0.002" friction="0.003"/>
+</joint>
+
+<link name ="rightLeg2">
+    <visual>
+		<origin  xyz="0 0 -0.06"/>
+		<geometry>
+			<mesh filename="Kobot/rightLeg3.obj"  scale="0.01 0.01 0.01" />
+		</geometry>
+    </visual>
+    <collision>
+		<origin  xyz="0 0 -0.06"/>
+		<geometry>
+			<mesh filename="Kobot/rightLeg3.obj"  scale="0.01 0.01 0.01" />
+		</geometry>
+    </collision>
+	<inertial>
+		<mass value="0.095"/>
+		<inertia ixx="0.0005048" ixy="0.0" ixz="0.0" iyy="0.000006587" iyz="0.0" izz="0.0005073"/>
+	</inertial>
+</link>
+  
+<joint name="RLeg1_to_RLeg2" type="revolute">
+    <parent link="rightLeg1"/>
+    <child link="rightLeg2"/>
+    <origin xyz="0 0.01 -0.18" rpy="0 1.6308357 0"/>
+    <axis xyz="0 1 0"/>
+	<limit effort="30" velocity="1" />
+	<joint_properties damping="0.002" friction="0.003"/>
+</joint>
+  
+<link name ="rightLeg3">
+    <visual>
+		<origin  xyz="0 0 -0.09"/>
+		<geometry>
+			<mesh filename="Kobot/rightLeg2.obj"  scale="0.01 0.01 0.01" />
+		</geometry>
+    </visual>
+    <collision>
+		<origin  xyz="0 0 -0.09"/>
+		<geometry>
+			<mesh filename="Kobot/rightLeg2.obj"  scale="0.01 0.01 0.01" />
+		</geometry>
+    </collision>
+	<inertial>
+		<mass value="0.081"/>
+		<inertia ixx="0.0003167" ixy="0.0" ixz="0.0" iyy="0.000005616" iyz="0.0" izz="0.0003188"/>
+	</inertial>
+</link>
+  
+<joint name="RLeg2_to_RLeg3" type="revolute">
+    <parent link="rightLeg2"/>
+    <child link="rightLeg3"/>
+    <origin xyz="0 -0.01 0.045" rpy="0 1.752624 0"/>
+    <axis xyz="0 1 0"/>
+	<limit effort="30" velocity="1" />
+	<joint_properties damping="0.002" friction="0.003"/>
+</joint>
+  
+<link name ="rightWheel">
+    <visual>
+		<geometry>
+			<mesh filename="Kobot/rightWheel.obj"  scale="0.01 0.01 0.01" />
+		</geometry>
+    </visual>
+    <collision>
+		<geometry>
+			<mesh filename="Kobot/rightWheel.obj"  scale="0.01 0.01 0.01" />
+		</geometry>
+    </collision>
+	<inertial>
+		<mass value="0.083"/>
+		<inertia ixx="0.0001103" ixy="0.0" ixz="0.0" iyy="0.0001103" iyz="0.0" izz="0.0002151"/>
+	</inertial>
+</link>
+  
+<joint name="RLeg2_to_wheel" type="revolute">
+    <parent link="rightLeg2"/>
+    <child link="rightWheel"/>
+    <origin xyz="0 0.02 -0.18" rpy="0 0 0 "/>
+    <axis xyz="0 1 0"/>
+	<limit effort="3000" velocity="200" />
+	<joint_properties damping="0.002" friction="0.003"/>
+</joint>
+ 
+<!-- Add weight on the top of Torso -->
+<link name="weight">
+	<visual>
+		<origin rpy="0 0 0" xyz="0.02 0 0"/>
+		<geometry>
+			<cylinder radius="0.045" length="0.03" />
+		</geometry>
+		<material name="red">
+			<color rgba="1 0 0 1"/>
+		</material>
+	</visual>
+	<collision>
+		<origin rpy="0 0 0" xyz="0.02 0 0"/>
+		<geometry>
+			<cylinder radius="0.05" length="0.04" />
+		</geometry>
+	</collision>
+	<inertial>
+		<mass value="0.05"/>
+		<inertia ixx="0.00002906" ixy="0.0" ixz="0.0" iyy="0.00002906" iyz="0.0" izz="0.00005062"/>
+	</inertial>
+			
+</link>
+	
+<joint name="body_to_weight" type="revolute">
+    <parent link="Body"/>
+    <child link="weight"/>
+    <origin xyz="0 0 0.065" rpy="0 0 0 "/>
+    <axis xyz="0 0 1"/>
+	<limit effort="30" velocity="1" />
+	<joint_properties damping="0.002" friction="0.003"/>
+ </joint>
+  
+</robot>
